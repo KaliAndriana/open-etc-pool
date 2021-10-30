@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sort"
@@ -11,11 +12,11 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/robfig/cron"
 
 	"github.com/etclabscore/open-etc-pool/storage"
 	"github.com/etclabscore/open-etc-pool/util"
 )
-
 
 type ApiConfig struct {
 	Enabled              bool   `json:"enabled"`
@@ -104,7 +105,7 @@ func (s *ApiServer) Start() {
 			}
 		}
 	}()
-	
+
 	go func() {
 		c := cron.New()
 
@@ -149,13 +150,13 @@ func (s *ApiServer) Start() {
 		})
 
 		c.Start()
-	}
+	}()
 
 	if !s.config.PurgeOnly {
 		s.listen()
 	}
 }
-	
+
 func (s *ApiServer) collectPoolCharts() {
 	ts := util.MakeTimestamp() / 1000
 	now := time.Now()
@@ -169,6 +170,7 @@ func (s *ApiServer) collectPoolCharts() {
 	if err != nil {
 		log.Printf("Failed to fetch pool charts from backend: %v", err)
 		return
+	}
 }
 
 func (s *ApiServer) collectnetCharts() {
@@ -199,6 +201,7 @@ func (s *ApiServer) collectMinerCharts(login string, hash int64, largeHash int64
 	year, month, day := now.Date()
 	hour, min, _ := now.Clock()
 	t2 := fmt.Sprintf("%d-%02d-%02d %02d_%02d", year, month, day, hour, min)
+
 	log.Println("Miner "+login+" Hash is", ts, t2, hash, largeHash)
 	err := s.backend.WriteMinerCharts(ts, t2, login, hash, largeHash, workerOnline)
 	if err != nil {
@@ -223,6 +226,7 @@ func (s *ApiServer) collectshareCharts(login string, workerOnline int64) {
 
 func (s *ApiServer) listen() {
 	r := mux.NewRouter()
+	r.HandleFunc("/api/finders", s.FindersIndex)
 	r.HandleFunc("/api/stats", s.StatsIndex)
 	r.HandleFunc("/api/miners", s.MinersIndex)
 	r.HandleFunc("/api/blocks", s.BlocksIndex)
@@ -261,6 +265,7 @@ func (s *ApiServer) collectStats() {
 	}
 	if len(s.config.LuckWindow) > 0 {
 		stats["luck"], err = s.backend.CollectLuckStats(s.config.LuckWindow)
+		stats["luckCharts"], err = s.backend.CollectLuckCharts(s.config.LuckWindow[0])
 		if err != nil {
 			log.Printf("Failed to fetch luck stats from backend: %v", err)
 			return
@@ -270,6 +275,25 @@ func (s *ApiServer) collectStats() {
 	stats["poolCharts"], err = s.backend.GetPoolCharts(s.config.PoolChartsNum)
 	s.stats.Store(stats)
 	log.Printf("Stats collection finished %s", time.Since(start))
+}
+
+func (s *ApiServer) FindersIndex(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.WriteHeader(http.StatusOK)
+
+	reply := make(map[string]interface{})
+	stats := s.getStats()
+	if stats != nil {
+		reply["now"] = util.MakeTimestamp()
+		reply["finders"] = stats["finders"]
+	}
+
+	err := json.NewEncoder(w).Encode(reply)
+	if err != nil {
+		log.Println("Error serializing API response: ", err)
+	}
 }
 
 func (s *ApiServer) StatsIndex(w http.ResponseWriter, r *http.Request) {
@@ -295,6 +319,7 @@ func (s *ApiServer) StatsIndex(w http.ResponseWriter, r *http.Request) {
 		reply["maturedTotal"] = stats["maturedTotal"]
 		reply["immatureTotal"] = stats["immatureTotal"]
 		reply["candidatesTotal"] = stats["candidatesTotal"]
+		reply["exchangedata"] = stats["exchangedata"]
 		reply["netCharts"] = stats["netCharts"]
 		reply["workersTotal"] = stats["workersTotal"]
 	}
@@ -362,6 +387,7 @@ func (s *ApiServer) PaymentsIndex(w http.ResponseWriter, r *http.Request) {
 	if stats != nil {
 		reply["payments"] = stats["payments"]
 		reply["paymentsTotal"] = stats["paymentsTotal"]
+		reply["exchangedata"] = stats["exchangedata"]
 	}
 
 	err := json.NewEncoder(w).Encode(reply)
@@ -378,6 +404,8 @@ func (s *ApiServer) AccountIndex(w http.ResponseWriter, r *http.Request) {
 	login := strings.ToLower(mux.Vars(r)["login"])
 	s.minersMu.Lock()
 	defer s.minersMu.Unlock()
+
+	generalstats := s.getStats()
 
 	reply, ok := s.miners[login]
 	now := util.MakeTimestamp()
@@ -411,7 +439,8 @@ func (s *ApiServer) AccountIndex(w http.ResponseWriter, r *http.Request) {
 			stats[key] = value
 		}
 		stats["pageSize"] = s.config.Payments
-	        stats["minerCharts"], err = s.backend.GetMinerCharts(s.config.MinerChartsNum, login)
+		stats["exchangedata"] = generalstats["exchangedata"]
+		stats["minerCharts"], err = s.backend.GetMinerCharts(s.config.MinerChartsNum, login)
 		stats["shareCharts"], err = s.backend.GetShareCharts(s.config.ShareChartsNum, login)
 		stats["paymentCharts"], err = s.backend.GetPaymentCharts(login)
 		reply = &Entry{stats: stats, updatedAt: now}
