@@ -16,12 +16,16 @@ type Config struct {
 
 	Threads int `json:"threads"`
 
-	Network string         `json:"network"`
-	Coin    string         `json:"coin"`
-	Redis   storage.Config `json:"redis"`
+	Network  string         `json:"network"`
+	Coin     string         `json:"coin"`
+	Pplns    int64          `json:"pplns"`
+	Redis    storage.Config `json:"redis"`
+	CoinName string         `json:"coin-name"`
 
 	BlockUnlocker payouts.UnlockerConfig `json:"unlocker"`
 	Payouts       payouts.PayoutsConfig  `json:"payouts"`
+
+	Exchange exchange.ExchangeConfig `json:"exchange"`
 
 	NewrelicName    string `json:"newrelicName"`
 	NewrelicKey     string `json:"newrelicKey"`
@@ -44,6 +48,7 @@ type Proxy struct {
 
 	MaxFails    int64 `json:"maxFails"`
 	HealthCheck bool  `json:"healthCheck"`
+	Debug       bool  `json:"debug"`
 
 	Stratum Stratum `json:"stratum"`
 
