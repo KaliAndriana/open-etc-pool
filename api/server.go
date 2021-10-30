@@ -149,6 +149,7 @@ func (s *ApiServer) Start() {
 		})
 
 		c.Start()
+	}
 
 	if !s.config.PurgeOnly {
 		s.listen()
@@ -168,7 +169,6 @@ func (s *ApiServer) collectPoolCharts() {
 	if err != nil {
 		log.Printf("Failed to fetch pool charts from backend: %v", err)
 		return
-	}
 }
 
 func (s *ApiServer) collectnetCharts() {
