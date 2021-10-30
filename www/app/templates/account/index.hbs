@@ -1,4 +1,6 @@
 <div class="container">
+{{high-charts mode=chartMode chartOptions=chartOptions content=chartData}}
+{{high-charts mode=chartMode chartOptions=shareChart content=chartData}}
   {{#if model.workers}}
   <h4>Your Workers</h4>
   <div class="table-responsive">
@@ -32,8 +34,5 @@
     There are two windows, long and short, first is equal to about 30 minutes and long window is usually equal to 3 hours.<br/>
     Dead (sick) workers will be highlighted in a table of workers if they didn't submit a share for 1/2 of short window,
     so you can perform maintenance of your rigs.
-  </div>
-  <div class="alert alert-info" role="alert">
-    <strong>Your bulk stats JSON API URL:</strong> <a href="/api/accounts/{{model.login}}">/api/accounts/{{model.login}}</a>
   </div>
 </div>
