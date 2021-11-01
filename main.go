@@ -14,10 +14,10 @@ import (
 	"github.com/fatih/structs"
 	"github.com/yvasiyarov/gorelic"
 
-	"github.com/btenterprise2020/open-etc-pool/api"
-	"github.com/btenterprise2020/open-etc-pool/payouts"
-	"github.com/btenterprise2020/open-etc-pool/proxy"
-	"github.com/btenterprise2020/open-etc-pool/storage"
+	"github.com/open-etc-pool/open-etc-pool/api"
+	"github.com/open-etc-pool/open-etc-pool/payouts"
+	"github.com/open-etc-pool/open-etc-pool/proxy"
+	"github.com/open-etc-pool/open-etc-pool/storage"
 )
 
 var cfg proxy.Config
